@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <title>Pokemon Weather</title>
+  </head>
+  <body>
+      <% weather_url = 'https://api.openweathermap.org/data/2.5/weather?zip=' + params['zipcode'] + '&appid=a5de1c6ca8755e8cd2c24a6c3581c196' %>
+      <% weather_uri = URI(weather_url) %>
+      <% weather_response = Net::HTTP.get(weather_uri) %>
+      <% weather_json = JSON.parse(weather_response) %>
+
+      <!--Gets weather ID -->
+      <% weatherID = JSON.pretty_generate(weather_json["weather"][0]["id"]).to_i  %>
+
+      <!--Gets wind speed in mph -->
+      <% wind = (weather_json["wind"]["speed"] * 2.236936).round(2) %>
+
+
+      <!-- weather ID codes that correspond to weather type -->
+      <% weather_hash = {[200,201,202,230,231,232,300,301,302,310,311,312,313,314,321,500,501,502,503,504,511,520,521,522,531] => "Rainy",[600,601,602,611,612,613,615,616,620,621,622] => "Snow", [800] => "Clear", [804] => "Overcast",[801,802,803] => "Partly Cloudy",[701,741] => "Fog"} %>
+
+      <!-- matches code with weather type to set current_weather -->
+      <% current_weather = "" %>
+      <%weather_hash.each do |code,type| %>
+        <% current_weather = type if code.include?(weatherID) %>
+      <% end %>
+
+      <!-- Wind takes precedence over these https://www.reddit.com/r/TheSilphRoad/comments/amb4ki/predicting_ingame_weather_yes_you_can/-->  
+      <% if ((current_weather == "Clear" || current_weather == "Overcast" || current_weather == "Partly Cloudy") && wind >= 55) %>
+        <% current_weather = "Windy" %>
+      <% end %>
+
+      <!-- Gets current local time for icon display-->
+      <% time = Time.now.getlocal %>
+      <% time = time.hour%>
+      <% time < 18 ? time = "d" : time = "n" %>
+
+
+
+      <div class="container">
+        <br>
+        <h1>Pokemon boosted in your current weather</h1>
+        <br>
+        <h4>The weather for zip code <%= params['zipcode'] %> is <strong><%= current_weather %></strong></h4>
+        <!-- weather icon display -->
+        <img src="/images/<%=current_weather.downcase%>-<%=time%>.png" alt="<%=current_weather%> weather icon">
+        <br>
+
+        <% url = 'https://pogoapi.net/api/v1/pokemon_types.json'%>
+        <% uri = URI(url) %>
+        <% response = Net::HTTP.get(uri) %>
+        <% json = JSON.parse(response) %>
+
+        <% pokemon_type = [] %>
+        <% weather_types = {"Clear" => ["Grass", "Ground","Fire"], "Fog" => ["Dark","Ghost"],"Overcast" => ["Fairy","Fighting","Poison"], "Partly Cloudy" => ["Normal", "Rock"],"Rainy" => ["Water","Electric","Bug"], "Snow" => ["Ice","Steel"],"Windy" => ["Dragon","Flying","Psychic"]} %>
+        <% weather = weather_types[current_weather] %>
+
+        <h2><%=weather.join(", ") %></h2>
+        <br>
+
+        <% (0...json.length).each do |i| %>
+          <% weather.each do |pokeType| %>
+            <% pokemon_type.push(json[i]["pokemon_name"]) if json[i]["type"].include?(pokeType) && !pokemon_type.include?(json[i]["pokemon_name"])  %>
+          <% end %>  
+        <% end %>
+
+        <div class="card">
+          <div class="card-body">
+            <ul class="list-group">
+              <% pokemon_type.each do |name| %>
+                <a href="/pokemon_bio/<%= name.downcase.to_s %>" class="list-group-item list-group-item-action"><%= name %></a>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+
+
+    </div>
+ 
+
+
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+    <!-- Option 2: Separate Popper and Bootstrap JS -->
+    <!--
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
+    -->
+  </body>
+</html>
+
+
